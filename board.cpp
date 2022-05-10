@@ -11,7 +11,7 @@ using namespace std;
 
 Board::Board() {
     
-    srand (time(NULL));
+    srand (time(NULL)); // randomize seed
     
     initAdjacencyList();
     resetBoard();
@@ -22,7 +22,7 @@ void Board::resetBoard() {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
             int r = rand() % 16;
-            if (r < 5) arr[i][j] = BLACK;
+            if (r < 4) arr[i][j] = BLACK;
             else arr[i][j] = EMPTY;
         }
     }
@@ -130,55 +130,123 @@ int Board::getShortestPath(int *count, int startRow, int startCol) {
     return shortest;
 }
 
-void Board::bestOrangeMoveStatic(int *bestRow, int *bestCol) {
-    if (isEdge(orangeRow, orangeCol)) return; // already won
-    
-    int shortest = INT_MAX;
-    int largestCount = -1;
+int Board::evaluate() {
     int count;
+    int distance = getShortestPath(&count);
+    return distance * 100 - count;
+}
+
+void Board::makeBestOrangeMove(int depth) {
+    
+    int bestR, bestC;
+    
+    int prevOrangeRow = orangeRow;
+    int prevOrangeCol = orangeCol;
+    
+    int value = INT_MAX;
+    bool first = true;
     
     for (int i = 0; i < 6; i++) {
         int nr = adjacent[orangeRow][orangeCol][i][0];
         int nc = adjacent[orangeRow][orangeCol][i][1];
         if (arr[nr][nc] != EMPTY) continue;
-        int length = getShortestPath(&count, nr, nc);
-        if (length < shortest || (length == shortest && count > largestCount)) {
-            shortest = length;
-            largestCount = count;
-            *bestRow = nr;
-            *bestCol = nc;
+        
+        orangeRow = nr;
+        orangeCol = nc;
+        int cvalue = minimaxBlack(depth - 1, INT_MIN, INT_MAX);
+        orangeRow = prevOrangeRow;
+        orangeCol = prevOrangeCol;
+        
+        if (cvalue < value || first) {
+            value = cvalue;
+            bestR = nr;
+            bestC = nc;
         }
+        first = false;
+        
     }
-    //cout << "Best move: " << *bestRow << " " << *bestCol << endl;
-    //displayBoard(arr, REGULAR_MODE, *bestRow, *bestCol);
+    
+    // make best move
+    orangeRow = bestR;
+    orangeCol = bestC;
 }
 
-void Board::bestBlackMoveStatic(int *bestRow, int *bestCol) {
-    int longest = -1;
-    int smallestCount = INT_MAX;
-    int count;
+void Board::makeBestBlackMove(int depth) {
+    
+    int bestR, bestC;
+    
+    int value = INT_MIN;
+    bool first = true;
     
     for (int nr = 0; nr < ROWS; nr++) {
         for (int nc = 0; nc < COLS; nc++) {
+            
+            if (arr[nr][nc] != EMPTY) continue;
+            
+            arr[nr][nc] = BLACK;
+            int cvalue = minimaxOrange(depth - 1, INT_MIN, INT_MAX);
+            arr[nr][nc] = EMPTY;
+            
+            if (cvalue > value || first) {
+                value = cvalue;
+                bestR = nr;
+                bestC = nc;
+            }
+            first = false;
+        }
+    }
+    
+    // make best move
+    arr[bestR][bestC] = BLACK;
+}
+
+
+int Board::minimaxOrange(int depth, int a, int b) {
+    
+    if (depth == 0) return evaluate();
+    else if (isOrangeWin()) return INT_MIN + (10-depth);
+    
+    int prevOrangeRow = orangeRow;
+    int prevOrangeCol = orangeCol;
+    
+    int value = INT_MAX;
+    for (int i = 0; i < 6; i++) {
+        int nr = adjacent[orangeRow][orangeCol][i][0];
+        int nc = adjacent[orangeRow][orangeCol][i][1];
+        if (arr[nr][nc] != EMPTY) continue;
+        
+        orangeRow = nr;
+        orangeCol = nc;
+        value = std::min(value, minimaxBlack(depth - 1, a, b));
+        orangeRow = prevOrangeRow;
+        orangeCol = prevOrangeCol;
+                
+        if (value <= a) break; // alpha cutoff
+    }
+    return value;
+}
+
+int Board::minimaxBlack(int depth, int a, int b) {
+    
+    if (depth == 0) return evaluate();
+    else if (isBlackWin()) return INT_MAX - (10-depth);
+    
+    int value = INT_MIN;
+    for (int nr = 0; nr < ROWS; nr++) {
+        for (int nc = 0; nc < COLS; nc++) {
+
             if (arr[nr][nc] != EMPTY) continue;
             
             arr[nr][nc] = BLACK; // place piece
-            int length = getShortestPath(&count, orangeRow, orangeCol);
             
-            //cout << nr << " " << nc << ": " << length << " " << count << endl;
+            value = std::max(value, minimaxOrange(depth - 1, a, b));
             
-            if (length > longest || (length == longest && count < smallestCount)) {
-                longest = length;
-                smallestCount = count;
-                *bestRow = nr;
-                *bestCol = nc;
-            }
             arr[nr][nc] = EMPTY; // unplace piece
+                    
+            if (value >= b) break; // beta cutoff
         }
     }
-    //cout << "Best move: " << *bestRow << " " << *bestCol << endl;
-    //displayBoard(arr, REGULAR_MODE, orangeRow, orangeCol);
-    
+    return value;
 }
 
 void Board::display() {

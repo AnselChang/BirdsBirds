@@ -21,11 +21,16 @@ public:
     void moveOrangeTo(int row, int col);
     void makeBlackMove(int row, int col);
     
+    int evaluate();
+    
     bool isOrangeWin();
     bool isBlackWin();
     
-    void bestOrangeMoveStatic(int *bestRow, int *bestCol);
-    void bestBlackMoveStatic(int *bestRow, int *bestCol);
+    void makeBestOrangeMove(int depth);
+    void makeBestBlackMove(int depth);
+    int minimaxOrange(int depth, int a, int b);
+    int minimaxBlack(int depth, int a, int b);
+    
     int getShortestPath(int *count, int startRow = -1, int startCol = -1);
     void bfs(int visited[ROWS][COLS], int row, int col);
     

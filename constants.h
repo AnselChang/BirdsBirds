@@ -17,10 +17,11 @@ const int EMPTY = 0;
 const int BLACK = 1;
 const int INVALID = 2;
 
+
 static string REGULAR_MODE(int key) {
     switch(key) {
         case EMPTY:
-            return ".";
+            return "-";
         case BLACK:
             return "*";
         default:
